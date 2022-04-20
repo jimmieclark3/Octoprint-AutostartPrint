@@ -1,4 +1,4 @@
 include README.md
-recursive-include octoprint_AutostartPrint/templates *
-recursive-include octoprint_AutostartPrint/translations *
-recursive-include octoprint_AutostartPrint/static *
+recursive-include octoprint_AutostartPrint2.0/templates *
+recursive-include octoprint_AutostartPrint2.0/translations *
+recursive-include octoprint_AutostartPrint2.0/static *
