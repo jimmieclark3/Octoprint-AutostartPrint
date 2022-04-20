@@ -40,9 +40,9 @@ class AutostartPrintPlugin(octoprint.plugin.SettingsPlugin,
 		self._selectedDestination = None
 		self.countdownRunning = False
 		self.selectedFilename = None
-        self.lastPrintedFile = None
-        self.lastPrintedFileData = None
-        self.queuedItem = None
+		self.lastPrintedFile = None
+		self.lastPrintedFileData = None
+		self.queuedItem = None
 
 	################################################################################################## private functions
 
@@ -76,15 +76,15 @@ class AutostartPrintPlugin(octoprint.plugin.SettingsPlugin,
 	def _autostartPrintThreadFunction(self, fileName, filePath, isSDDestination, isNext):
 		# lets try to start sofort
 
-        if isNext and self.lastPrintedFile == fileName:
+		if isNext and self.lastPrintedFile == fileName:
 			self._sendPopupMessageToClient("success", "AutostartPrint: Printing stopped, all files printed!",
 										   "All files printed")
                                            
-            self._logger.info("!!!_autostartPrintThreadFunction stopped and now waiting")
-            return
-
+			self._logger.info("!!!_autostartPrintThreadFunction stopped and now waiting")
+			return
+		
 		self._logger.info("!!!_autostartPrintThreadFunction started")
-        
+        	
 		self.selectedFilename = fileName
 		self.countdownRunning = True
 
@@ -103,9 +103,9 @@ class AutostartPrintPlugin(octoprint.plugin.SettingsPlugin,
 
 		# should I really start the print
 		if startPrint:
-            self.lastPrintedFile = filePath
-            self.lastPrintedFileData = self.queuedItem
-            self.queuedItem = None
+			self.lastPrintedFile = filePath
+			self.lastPrintedFileData = self.queuedItem
+			self.queuedItem = None
 			self._printer.select_file(filePath, isSDDestination, True)
 			self._sendPopupMessageToClient("success", "AutostartPrint: Print started!",
 										   "File '" +self.selectedFilename+ "' selected and started")
@@ -140,25 +140,25 @@ class AutostartPrintPlugin(octoprint.plugin.SettingsPlugin,
 			if selectedStorageDestination == FileDestinations.SDCARD:
 				path = selectedFilePath
 				sd = True
-                next = False
+				next = False
 			elif selectedStorageDestination == FileDestinations.LOCAL:
 				path = self._file_manager.path_on_disk(selectedStorageDestination, selectedFilePath)
 				sd = False
-                next = False
-            elif selectedStorageDestination == "local-next":
+				next = False
+			elif selectedStorageDestination == "local-next":
 				sd = False
-                next = True
-                for currentDestination in latestFiles:
-                    if selectedStorageDestination == currentDestination:
-                        allFiles = latestFiles[currentDestination].items()
+				next = True
+				for currentDestination in latestFiles:
+					if selectedStorageDestination == currentDestination:
+						allFiles = latestFiles[currentDestination].items()
 
-                        selectedFilePathDict = self._findLatestUploadedFile(allFiles, self.lastPrintedFileData)
+						selectedFilePathDict = self._findLatestUploadedFile(allFiles, self.lastPrintedFileData)
                        
-                selectedFilePath = selectedFilePathDict["filePath"]
-                selectedFileName = selectedFilePathDict["fileName"]
+				selectedFilePath = selectedFilePathDict["filePath"]
+				selectedFileName = selectedFilePathDict["fileName"]
             
 				path = self._file_manager.path_on_disk(selectedStorageDestination, selectedFilePath)
-                self.queuedItem = selectedFilePathDict
+				self.queuedItem = selectedFilePathDict
 
 			# start_new_thread(self.autostartThreadFunction(path, sd,))
 			t = Thread(target=self._autostartPrintThreadFunction, args=(selectedFileName, path, sd, next, ))
@@ -170,10 +170,10 @@ class AutostartPrintPlugin(octoprint.plugin.SettingsPlugin,
 		self._logger.info("!!!CONNECTED-Event DONE")
 
 	def _findLatestUploadedFile(self, allFiles, currentItem):
-        latestResult = currentItem
+		latestResult = currentItem
         
-        if currentItem != None:
-            currentItemUploadTime = currentItem["uploadTime"]
+		if currentItem != None:
+			currentItemUploadTime = currentItem["uploadTime"]
             
 		result = None
 		for currentFile in allFiles:
@@ -210,9 +210,9 @@ class AutostartPrintPlugin(octoprint.plugin.SettingsPlugin,
 					uploadTime = uploadTime
 				)
                 
-                if (currentItem != None and uploadTime > currentItemUploadTime):
-                    latestUploadTime = latestResult["uploadTime"]
-                    return latestResult
+				if (currentItem != None and uploadTime > currentItemUploadTime):
+					latestUploadTime = latestResult["uploadTime"]
+					return latestResult
                 
 
 		return latestResult
@@ -320,17 +320,17 @@ class AutostartPrintPlugin(octoprint.plugin.SettingsPlugin,
 		# for details.
 		return dict(
 			AutostartPrint=dict(
-				displayName="AutostartPrint Plugin",
+				displayName="AutostartPrint2 Plugin",
 				displayVersion=self._plugin_version,
 
 				# version check: github repository
 				type="github_release",
-				user="OllisGit",
-				repo="OctoPrint-AutostartPrint",
+				user="jimmieclark3",
+				repo="OctoPrint-AutostartPrint2",
 				current=self._plugin_version,
 
 				# update method: pip
-				pip="https://github.com/OllisGit/OctoPrint-AutostartPrint/releases/latest/download/master.zip"
+				pip="https://github.com/jimmieclark3/OctoPrint-AutostartPrint/releases/latest/download/master.zip"
 			)
 		)
 
@@ -338,7 +338,7 @@ class AutostartPrintPlugin(octoprint.plugin.SettingsPlugin,
 # If you want your plugin to be registered within OctoPrint under a different name than what you defined in setup.py
 # ("OctoPrint-PluginSkeleton"), you may define that here. Same goes for the other metadata derived from setup.py that
 # can be overwritten via __plugin_xyz__ control properties. See the documentation for that.
-__plugin_name__ = "AutostartPrint Plugin"
+__plugin_name__ = "AutostartPrint2 Plugin"
 __plugin_pythoncompat__ = ">=2.7,<4"
 
 def __plugin_load__():

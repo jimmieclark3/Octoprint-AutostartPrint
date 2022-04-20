@@ -20,6 +20,9 @@ plugin_version = "1.0.0"
 # module
 plugin_description = """Autostart a Print after connecting."""
 
+
+plugin_pythoncompat = ">=2.7,<4"
+
 # The plugin's author. Can be overwritten within OctoPrint's internal data via __plugin_author__ in the plugin module
 plugin_author = "OllisGit forked by Jimmie Clark"
 
