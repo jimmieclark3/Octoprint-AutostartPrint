@@ -6,7 +6,7 @@
  */
 $(function() {
 
-    var PLUGIN_ID = "AutostartPrint"; // from setup.py plugin_identifier
+    var PLUGIN_ID = "AutostartPrint2"; // from setup.py plugin_identifier
 
     var countdownDialog = null;
     var countdownCircle = null;
@@ -162,9 +162,9 @@ $(function() {
                       ],
         // Elements to bind to, e.g. #settings_plugin_AutostartPrint, #tab_plugin_AutostartPrint, ...
         elements: [
-            document.getElementById("autostartPrint_plugin_navbar"),
-            document.getElementById("autostartPrint_plugin_sidebar"),
-            document.getElementById("autostartPrint_plugin_settings")
+            document.getElementById("autostartPrint2_plugin_navbar"),
+            document.getElementById("autostartPrint2_plugin_sidebar"),
+            document.getElementById("autostartPrint2_plugin_settings")
         ]
     });
 });

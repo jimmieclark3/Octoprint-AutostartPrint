@@ -10,6 +10,7 @@ import flask
 
 
 import time
+import json
 from threading import Thread
 
 ## GLOBAL KEYS
@@ -29,20 +30,18 @@ FILE_SELECTION_MODE_FILESYSTEM = FileDestinations.LOCAL
 START_TRIGGER_MODE_CONNECTION = "connection"
 START_TRIGGER_MODE_OPERATIONAL = "operational"
 
-class AutostartPrintPlugin(octoprint.plugin.SettingsPlugin,
-						   octoprint.plugin.AssetPlugin,
-						   octoprint.plugin.TemplatePlugin,
-						   octoprint.plugin.StartupPlugin,
-						   octoprint.plugin.EventHandlerPlugin,
-						   octoprint.plugin.SimpleApiPlugin):
+class AutostartPrintPlugin2(octoprint.plugin.SettingsPlugin,
+						    octoprint.plugin.AssetPlugin,
+						    octoprint.plugin.TemplatePlugin,
+						    octoprint.plugin.StartupPlugin,
+						    octoprint.plugin.EventHandlerPlugin,
+						    octoprint.plugin.SimpleApiPlugin):
 
 	def initialize(self):
 		self._selectedDestination = None
 		self.countdownRunning = False
 		self.selectedFilename = None
-		self.lastPrintedFile = None
-		self.lastPrintedFileData = None
-		self.queuedItem = None
+		self.currentPrintJob = None
 
 	################################################################################################## private functions
 
@@ -76,7 +75,7 @@ class AutostartPrintPlugin(octoprint.plugin.SettingsPlugin,
 	def _autostartPrintThreadFunction(self, fileName, filePath, isSDDestination, isNext):
 		# lets try to start sofort
 
-		if isNext and self.lastPrintedFile == fileName:
+		if isNext and self.currentPrintJob != None and self.currentPrintJob[0] == fileName:
 			self._sendPopupMessageToClient("success", "AutostartPrint: Printing stopped, all files printed!",
 										   "All files printed")
                                            
@@ -103,9 +102,6 @@ class AutostartPrintPlugin(octoprint.plugin.SettingsPlugin,
 
 		# should I really start the print
 		if startPrint:
-			self.lastPrintedFile = filePath
-			self.lastPrintedFileData = self.queuedItem
-			self.queuedItem = None
 			self._printer.select_file(filePath, isSDDestination, True)
 			self._sendPopupMessageToClient("success", "AutostartPrint: Print started!",
 										   "File '" +self.selectedFilename+ "' selected and started")
@@ -148,17 +144,17 @@ class AutostartPrintPlugin(octoprint.plugin.SettingsPlugin,
 			elif selectedStorageDestination == "local-next":
 				sd = False
 				next = True
+				selectedStorageDestination = "local"
 				for currentDestination in latestFiles:
 					if selectedStorageDestination == currentDestination:
 						allFiles = latestFiles[currentDestination].items()
 
-						selectedFilePathDict = self._findLatestUploadedFile(allFiles, self.lastPrintedFileData)
+						selectedFilePathDict = self._findNextUploadedFile(allFiles, self.currentPrintJob)
                        
 				selectedFilePath = selectedFilePathDict["filePath"]
 				selectedFileName = selectedFilePathDict["fileName"]
             
 				path = self._file_manager.path_on_disk(selectedStorageDestination, selectedFilePath)
-				self.queuedItem = selectedFilePathDict
 
 			# start_new_thread(self.autostartThreadFunction(path, sd,))
 			t = Thread(target=self._autostartPrintThreadFunction, args=(selectedFileName, path, sd, next, ))
@@ -169,12 +165,8 @@ class AutostartPrintPlugin(octoprint.plugin.SettingsPlugin,
 										   "Could not found a file on '" + selectedStorageDestination + "'")
 		self._logger.info("!!!CONNECTED-Event DONE")
 
-	def _findLatestUploadedFile(self, allFiles, currentItem):
-		latestResult = currentItem
-        
-		if currentItem != None:
-			currentItemUploadTime = currentItem["uploadTime"]
-            
+	def _findLatestUploadedFile(self, allFiles, latestResult):
+
 		result = None
 		for currentFile in allFiles:
 			# check if file is a "machinecode file" and not a folder or image
@@ -210,13 +202,87 @@ class AutostartPrintPlugin(octoprint.plugin.SettingsPlugin,
 					uploadTime = uploadTime
 				)
                 
-				if (currentItem != None and uploadTime > currentItemUploadTime):
-					latestUploadTime = latestResult["uploadTime"]
-					return latestResult
-                
-
 		return latestResult
 
+	def _getUploadTime(self, fileName, filePath):
+		result = None
+
+		latestFiles = self._file_manager.list_files(recursive=True)
+		selectedStorageDestination = self._settings.get([SETTINGS_KEY_FILE_SELECTION_MODE])
+		if selectedStorageDestination == 'local-next':
+			selectedStorageDestination = 'local'
+
+		# self._sendPopupMessageToClient("error", "AutostartPrint: started _getUploadTime",
+		#								"Data Started getUploadTime")
+
+		for currentDestination in latestFiles:
+			if selectedStorageDestination == currentDestination:
+				allFiles = latestFiles[currentDestination].items()
+
+				#self._sendPopupMessageToClient("error", "AutostartPrint: " + selectedStorageDestination,
+				#								"Data " + selectedStorageDestination)
+
+				for currentFile in allFiles:
+					# check if file is a "machinecode file" and not a folder or image
+					currentFilePath = currentFile[1]["path"]
+
+					if not octoprint.filemanager.valid_file_type(currentFilePath, type="machinecode"):
+						continue
+
+					if currentFilePath == filePath and currentFile[0] == fileName:
+							
+						s = json.dumps(currentFile)
+								
+						self._sendPopupMessageToClient("error", "AutostartPrint: Found File",
+														"Data " + s)
+														
+						result = currentFile
+
+						return result
+
+		return result
+
+	def _findNextUploadedFile(self, allFiles, currentItem):
+		latestResult = currentItem
+        
+		if currentItem == None:
+			return None
+            
+		for currentFile in allFiles:
+			# check if file is a "machinecode file" and not a folder or image
+			currentFilePath = currentFile[1]["path"]
+
+			if not octoprint.filemanager.valid_file_type(currentFilePath, type="machinecode"):
+				includeSubFolders = self._settings.get_boolean([SETTINGS_KEY_INCLUDE_SUB_FOLDERS])
+				if (currentFile[1]["type"] == "folder" and includeSubFolders == True):
+					if ("children" in currentFile[1]):
+						allSubFiles = currentFile[1]["children"].items()
+						latestResult = self._findNextUploadedFile(allSubFiles, latestResult)
+						# skip folder, next file
+						continue
+				else:
+					if not octoprint.filemanager.valid_file_type(currentFilePath, type="machinecode"):
+						continue
+
+			# gcode present
+			latestUploadTime = currentItem[1]["date"]
+
+			uploadTime = currentFile[1]["date"]
+
+			if uploadTime > latestUploadTime:
+
+				selectedFilePath = currentFilePath
+				selectedFileName = currentFile[0]
+
+				latestResult = dict(
+					filePath = selectedFilePath,
+					fileName = selectedFileName,
+					uploadTime = uploadTime
+				)
+
+				return latestResult
+                
+		return None
 
 
 	######################################################################################### Hooks and public functions
@@ -228,6 +294,21 @@ class AutostartPrintPlugin(octoprint.plugin.SettingsPlugin,
 #		self._logger.info("AFTERSTART")
 
 	def on_event(self, event, payload):
+
+		if Events.PRINT_STARTED == event:
+			s = json.dumps(payload)
+
+			# self._sendPopupMessageToClient("error", "AutostartPrint: " + event + " " + s,
+			# 								"Data " + event + " " + s)
+
+			upTime = self._getUploadTime(payload["name"], payload["path"])
+
+			self.currentPrintJob = upTime
+
+			# s = json.dumps(upTime)
+
+			# self._sendPopupMessageToClient("error", "AutostartPrint: currentJob: " + event + " " + s,
+			#								"Data " + event + " " + s)
 
 		# if (Events.CONNECTED == event and self._settings.get_boolean([SETTINGS_KEY_ACTIVATED])):
 		if (self._settings.get_boolean([SETTINGS_KEY_ACTIVATED])):
@@ -307,10 +388,10 @@ class AutostartPrintPlugin(octoprint.plugin.SettingsPlugin,
 		# core UI here.
 		return dict(
 			js=["js/circle-progress.min.js",
-				"js/AutostartPrint.js",
+				"js/AutostartPrint2.js",
 				"js/ResetSettingsUtilV2.js"],
-			css=["css/AutostartPrint.css"],
-			less=["less/AutostartPrint.less"]
+			css=["css/AutostartPrint2.css"],
+			less=["less/AutostartPrint2.less"]
 		)
 
 	##~~ Softwareupdate hook
@@ -343,7 +424,7 @@ __plugin_pythoncompat__ = ">=2.7,<4"
 
 def __plugin_load__():
 	global __plugin_implementation__
-	__plugin_implementation__ = AutostartPrintPlugin()
+	__plugin_implementation__ = AutostartPrintPlugin2()
 
 	global __plugin_hooks__
 	__plugin_hooks__ = {
